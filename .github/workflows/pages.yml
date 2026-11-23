@@ -23,3 +23,13 @@ jobs:
           git add -A
           git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -qm "Seite ${GITHUB_SHA::7}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" gh-pages
+      - name: Seite prüfen
+        run: |
+          for i in $(seq 1 30); do
+            sleep 10
+            c=$(curl -s -o /tmp/p.html -w '%{http_code}' "https://kleineruwe-dotcom.github.io/Schafkopfrechner/?v=${GITHUB_SHA::7}")
+            if [ "$c" = 200 ] && grep -q Schafkopfrechner /tmp/p.html; then echo "online"; break; fi
+          done
+          curl -s -o /dev/null -w 'index %{http_code}\n' https://kleineruwe-dotcom.github.io/Schafkopfrechner/
+          curl -s -o /dev/null -w 'manifest %{http_code}\n' https://kleineruwe-dotcom.github.io/Schafkopfrechner/manifest.webmanifest
+          curl -s -o /dev/null -w 'kleinschreibung %{http_code}\n' https://kleineruwe-dotcom.github.io/schafkopfrechner/
