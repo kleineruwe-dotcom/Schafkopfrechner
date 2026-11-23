@@ -213,7 +213,8 @@
           const { balances } = S.replay(s);
           const top = s.players.map((p) => `<span class="${cls(balances[p.id])}">${esc(p.name)} ${fmt(balances[p.id] || 0)}</span>`).join(" · ");
           return `<a class="card" href="#/r/${s.id}">
-            <div class="row spread"><b>${esc(s.name)}</b><span class="muted small">${dateStr(s.createdAt)}</span></div>
+            <div class="row spread"><b>${esc(s.name)}</b><span class="pill ${s.finished ? "done" : "live"}">${s.finished ? "beendet" : "läuft"}</span></div>
+            <div class="small muted">${dateStr(s.createdAt)}</div>
             <div class="small muted">${s.games.length} ${s.games.length === 1 ? "Spiel" : "Spiele"} · Sauspiel ${fmt(S.tarifOf(s).sau, false)} / Solo ${fmt(S.tarifOf(s).solo, false)}</div>
             <div class="small" style="margin-top:4px">${top}</div></a>`;
         }).join("")}
@@ -407,9 +408,14 @@
     return `<nav class="tabs">${t.map(([k, l]) => `<a href="#/r/${s.id}/${k}" class="${sub === k ? "on" : ""}">${l}</a>`).join("")}</nav>`;
   }
   function renderSession(s, sub) {
-    const head = `<div class="row spread"><h1>${esc(s.name)}</h1><span class="muted small">${dateStr(s.createdAt)}</span></div>${tabs(s, sub)}`;
+    const head = `<a class="small back" href="#/">‹ Alle Runden</a><div class="row spread"><h1>${esc(s.name)}</h1><span class="pill ${s.finished ? "done" : "live"}">${s.finished ? "beendet" : "läuft"}</span></div>${tabs(s, sub)}`;
     if (sub === "verlauf") return (app.innerHTML = head + viewHistory(s), bindHistory(s));
-    if (sub === "abrechnung") return (app.innerHTML = head + viewSettle(s));
+    if (sub === "abrechnung") {
+      app.innerHTML = head + viewSettle(s);
+      const f = app.querySelector("#finish2");
+      if (f) f.onclick = () => confirmBox("Runde beenden? Du kannst sie später wieder öffnen.", "Beenden", () => { s.finished = now(); touch(s); render(); toast("Runde beendet"); });
+      return;
+    }
     if (sub === "statistik") return (app.innerHTML = head + viewStats(s));
     if (sub === "einstellungen") return (app.innerHTML = head + viewSettings(s), bindSettings(s));
     app.innerHTML = head + viewBoard(s);
@@ -432,15 +438,26 @@
         }).join("")}
       </div>
       ${rules.stock ? `<div class="card stockbar"><span>Stock</span><b>${fmt(rp.stock, false)}</b></div>` : ""}
+      ${s.finished ? `
+      <div class="card finished section"><b>Runde beendet</b> am ${dateStr(s.finished)} um ${timeStr(s.finished)}. Wer wem was zahlt, steht unter „Abrechnung“.
+        <div class="row" style="margin-top:12px"><a class="btn primary grow" href="#/r/${s.id}/abrechnung">Abrechnung ansehen</a><a class="btn primary grow" href="#/neu">+ Neue Runde starten</a></div>
+        <div class="row" style="margin-top:8px"><button class="btn small" id="reopen">Runde wieder öffnen</button></div></div>` : `
       <div class="section"><button class="btn primary big" id="new-game">Spiel eintragen</button></div>
       <div class="row section">
         ${rules.stock ? `<button class="btn grow" id="zam">Zamgworfen (Stock)</button>` : `<button class="btn grow" id="zam">Zamgworfen</button>`}
         <button class="btn grow" id="undo" ${s.games.length ? "" : "disabled"}>Letztes Spiel rückgängig</button>
       </div>
+      <div class="row section"><button class="btn grow endbtn" id="finish">Runde beenden &amp; abrechnen</button><a class="btn grow" href="#/neu">+ Neue Runde</a></div>`}
       <p class="small muted">${s.games.length} ${s.games.length === 1 ? "Spiel" : "Spiele"} · Geber: <b>${esc(pname(s, s.dealer))}</b>${s.players.length > 4 ? " · Es spielen: " + active.map((id) => esc(pname(s, id))).join(", ") : ""}</p>
       ${last ? `<h2>Letztes Spiel</h2>${gameCard(s, last, s.games.length)}` : ""}`;
   }
   function bindBoard(s) {
+    const reopen = app.querySelector("#reopen");
+    if (reopen) reopen.onclick = () => { delete s.finished; touch(s); render(); toast("Runde wieder offen"); };
+    if (s.finished) { app.querySelectorAll("[data-game]").forEach((el) => (el.onclick = () => go(`r/${s.id}/spiel/${el.dataset.game}`))); return; }
+    app.querySelector("#finish").onclick = () => confirmBox("Runde beenden? Danach siehst du die Abrechnung. Du kannst sie später wieder öffnen.", "Beenden", () => {
+      s.finished = now(); touch(s); go(`r/${s.id}/abrechnung`); toast("Runde beendet");
+    });
     app.querySelector("#new-game").onclick = () => go(`r/${s.id}/spiel`);
     app.querySelector("#zam").onclick = () => {
       const rules = S.rulesOf(s);
@@ -490,6 +507,7 @@
 
   // ---------- Spiel eintragen / korrigieren ----------
   function renderGameForm(s, gid) {
+    if (s.finished && !gid) { go(`r/${s.id}`); return; }
     const rules = S.rulesOf(s);
     if (!draft || draft.sid !== s.id || (gid && draft.id !== gid)) {
       const existing = gid ? s.games.find((g) => g.id === gid) : null;
@@ -671,6 +689,7 @@
     return `
       <div class="card"><table><tbody>${sorted.map((p, i) => `<tr><td>${i + 1}.</td><td><b>${esc(p.name)}</b></td><td class="r ${cls(rp.balances[p.id])}"><b>${fmt(rp.balances[p.id] || 0)}</b></td></tr>`).join("")}</tbody></table>
       ${rules.stock && rp.stock ? `<p class="small muted">Im Stock liegen noch ${fmt(rp.stock, false)}. Die sind in den Salden oben schon abgezogen; wie ihr den Rest aufteilt, entscheidet ihr am Tisch.</p>` : ""}</div>
+      ${!s.finished ? `<div class="row section"><button class="btn grow endbtn" id="finish2">Runde beenden</button><a class="btn grow" href="#/neu">+ Neue Runde</a></div>` : `<div class="row section"><a class="btn primary grow" href="#/neu">+ Neue Runde starten</a></div>`}
       <h2>Wer zahlt wem</h2>
       ${transfers.length ? `<div class="card"><table><tbody>${transfers.map((t) => `<tr><td>${esc(pname(s, t.from))}</td><td class="muted">zahlt an</td><td>${esc(pname(s, t.to))}</td><td class="r"><b>${fmt(t.amount, false)}</b></td></tr>`).join("")}</tbody></table></div>` : `<div class="card empty">Alles ausgeglichen.</div>`}`;
   }

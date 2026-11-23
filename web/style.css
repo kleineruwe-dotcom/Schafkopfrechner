@@ -163,3 +163,10 @@ td.r, th.r { text-align: right; }
 /* Kein Doppeltipp-Zoom bei schnellem Tippen; keine Textmarkierung auf Knöpfen */
 html, body, * { touch-action: manipulation; }
 button, .btn, .chip, .tabs a, .stepper, .seg { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+.pill { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pill.live { background: var(--accent); color: #fff; }
+.pill.done { background: var(--chip); color: var(--muted); }
+.back { display: inline-block; color: var(--muted); text-decoration: none; margin-bottom: 4px; }
+.btn.endbtn { border-color: var(--accent); color: var(--accent); }
+.card.finished { border-color: var(--accent); }
