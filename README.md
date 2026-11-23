@@ -2,7 +2,7 @@
 
 Schafkopf mitzählen – als App fürs Handy (PWA). Vom Parkcafé Freising.
 
-**App öffnen:** https://kleineruwe-dotcom.github.io/schafkopfrechner/
+**App öffnen:** https://kleineruwe-dotcom.github.io/Schafkopfrechner/
 
 Android: Link in Chrome öffnen → Menü ⋮ → „App installieren“ / „Zum Startbildschirm hinzufügen“.
 iPhone: Link in Safari öffnen → Teilen → „Zum Home-Bildschirm“.
